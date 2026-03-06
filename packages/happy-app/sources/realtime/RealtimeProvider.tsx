@@ -1,27 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { ElevenLabsProvider } from "@elevenlabs/react-native";
-import { RealtimeVoiceSession } from './RealtimeVoiceSession';
+// Voice session is NOT loaded by default - user must explicitly enable it
+// This prevents audio focus from being taken on app startup
 import { Platform } from 'react-native';
 
 export const RealtimeProvider = ({ children }: { children: React.ReactNode }) => {
-    // Lazy load RealtimeVoiceSession only on native platforms when needed
-    // This prevents audio focus from being taken on app startup
-    const [shouldLoadVoice, setShouldLoadVoice] = useState(false);
-
-    useEffect(() => {
-        // Delay loading voice session to prevent audio focus conflict
-        // Voice session will be loaded when user actually starts a voice chat
-        if (Platform.OS !== 'web') {
-            const timer = setTimeout(() => {
-                setShouldLoadVoice(true);
-            }, 1000); // Load after 1 second to avoid startup audio focus
-            return () => clearTimeout(timer);
-        }
-    }, []);
-
+    // RealtimeVoiceSession is intentionally NOT loaded here
+    // It will only be loaded when user explicitly starts a voice chat
     return (
         <ElevenLabsProvider>
-            {shouldLoadVoice && <RealtimeVoiceSession />}
             {children}
         </ElevenLabsProvider>
     );
