@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "slug": "happy",
+    "extra": {
+      "eas": {
+        "projectId": "07f70315-2747-4822-8ef4-405eb83d8fc0"
+      }
+    }
+  }
+}
