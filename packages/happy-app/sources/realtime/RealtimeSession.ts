@@ -7,12 +7,16 @@ import { TokenStorage } from '@/auth/tokenStorage';
 import { t } from '@/text';
 import { config } from '@/config';
 import { requestMicrophonePermission, showMicrophonePermissionDeniedAlert } from '@/utils/microphonePermissions';
+import { requestVoiceSession } from './RealtimeProvider';
 
 let voiceSession: VoiceSession | null = null;
 let voiceSessionStarted: boolean = false;
 let currentSessionId: string | null = null;
 
 export async function startRealtimeSession(sessionId: string, initialContext?: string) {
+    // Request voice session to be loaded before starting
+    // This ensures the voice component is only loaded when user explicitly taps the mic button
+    requestVoiceSession();
     if (!voiceSession) {
         console.warn('No voice session registered');
         return;
