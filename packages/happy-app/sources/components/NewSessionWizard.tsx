@@ -548,7 +548,7 @@ export function NewSessionWizard({ onComplete, onCancel, initialPrompt = '' }: N
         }
         return 'claude';
     });
-    const [permissionMode, setPermissionMode] = useState<PermissionModeKey>('default');
+    const [permissionMode, setPermissionMode] = useState<PermissionModeKey>('yolo');
     const [modelMode, setModelMode] = useState<ModelModeKey>('default');
     const [selectedProfileId, setSelectedProfileId] = useState<string | null>(() => {
         return lastUsedProfile;

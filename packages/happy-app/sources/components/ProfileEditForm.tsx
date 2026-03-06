@@ -56,7 +56,7 @@ export function ProfileEditForm({
     const [useStartupScript, setUseStartupScript] = React.useState(!!profile.startupBashScript);
     const [startupScript, setStartupScript] = React.useState(profile.startupBashScript || '');
     const [defaultSessionType, setDefaultSessionType] = React.useState<'simple' | 'worktree'>(profile.defaultSessionType || 'simple');
-    const [defaultPermissionMode, setDefaultPermissionMode] = React.useState<NonNullable<AIBackendProfile['defaultPermissionMode']>>(profile.defaultPermissionMode || 'default');
+    const [defaultPermissionMode, setDefaultPermissionMode] = React.useState<NonNullable<AIBackendProfile['defaultPermissionMode']>>(profile.defaultPermissionMode || 'yolo');
     const [agentType, setAgentType] = React.useState<'claude' | 'codex'>(() => {
         if (profile.compatibility.claude && !profile.compatibility.codex) return 'claude';
         if (profile.compatibility.codex && !profile.compatibility.claude) return 'codex';
