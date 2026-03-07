@@ -1,0 +1,128 @@
+name: Build Android APK (Local)
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        working-directory: ./packages/happy-app
+        run: |
+          npm install --legacy-peer-deps
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Run Expo Prebuild
+        working-directory: ./packages/happy-app
+        run: |
+          # Set APP_ENV based on git ref
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            export APP_ENV="production"
+          else
+            export APP_ENV="preview"
+          fi
+          echo "Building with APP_ENV: $APP_ENV"
+
+          # Run prebuild to generate Android project
+          npx expo prebuild --platform android --clean
+
+      - name: Build APK with Gradle
+        working-directory: ./packages/happy-app/android
+        run: |
+          # Grant execute permission for gradlew
+          chmod +x gradlew
+
+          # Build APK (debug version, no keystore needed)
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            ./gradlew assembleRelease
+            APK_PATH=./app/build/outputs/apk/release/app-release.apk
+          else
+            ./gradlew assembleDebug
+            APK_PATH=./app/build/outputs/apk/debug/app-debug.apk
+          fi
+
+          # Verify APK exists
+          if [ -f "$APK_PATH" ]; then
+            echo "✅ APK built successfully: $APK_PATH"
+            ls -lh "$APK_PATH"
+          else
+            echo "❌ APK not found at $APK_PATH"
+            exit 1
+          fi
+
+      - name: Upload APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: happy-apk-${{ github.sha }}
+          path: |
+            packages/happy-app/android/app/build/outputs/apk/**/*.apk
+          retention-days: 30
+
+      - name: Get APK download URL
+        id: apk-url
+        run: |
+          # The artifact will be available at this URL pattern
+          RUN_ID=${{ github.run_id }}
+          echo "apk_artifact_url=https://github.com/${{ github.repository }}/actions/runs/$RUN_ID" >> $GITHUB_OUTPUT
+
+      - name: Create APK download link
+        run: |
+          echo "## 📱 APK 下载链接" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "构建完成！" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 方式 1: 从 Artifacts 下载" >> $GITHUB_STEP_SUMMARY
+          echo "1. 访问 GitHub Actions 页面" >> $GITHUB_STEP_SUMMARY
+          echo "2. 找到这次构建 run" >> $GITHUB_STEP_SUMMARY
+          echo "3. 在页面底部找到 Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "4. 下载 happy-apk-${{ github.sha }}.zip" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 方式 2: 直接下载" >> $GITHUB_STEP_SUMMARY
+          echo "即将在下方提供下载链接..." >> $GITHUB_STEP_SUMMARY
+
+      - name: Create Release with APK
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            packages/happy-app/android/app/build/outputs/apk/**/*.apk
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
