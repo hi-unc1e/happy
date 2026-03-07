@@ -28,12 +28,11 @@ jobs:
       - name: Setup EAS CLI
         run: npm install -g eas-cli
 
-      - name: Configure project
+      - name: Install dependencies
         run: |
-          echo '{"expo":{"slug":"happy"}}' > app.json
+          npm install --legacy-peer-deps
 
       - name: Build Android APK
-        id: build
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             PROFILE="production"
@@ -45,24 +44,29 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Wait for build and download APK
+      - name: Wait for build and get APK URL
+        id: apk-url
         run: |
           # Get the latest build ID
+          sleep 5
           BUILD_ID=$(eas build:list --platform=android --limit=1 --non-interactive --json | jq -r '.[0].id')
           echo "Build ID: $BUILD_ID"
 
           # Wait for build to complete
           for i in {1..60}; do
             STATUS=$(eas build:view $BUILD_ID --json | jq -r '.status')
-            echo "Build status: $STATUS"
+            echo "[$i] Build status: $STATUS"
 
             if [ "$STATUS" = "finished" ]; then
-              echo "Build finished successfully!"
-              # Download the APK
-              eas build:view $BUILD_ID --json | jq -r '.artifacts[] | select(.type | contains("apk")) | .url' | xargs -n 1 curl -L -o build.apk
+              echo "✅ Build finished successfully!"
+
+              # Get APK URL
+              APK_URL=$(eas build:view $BUILD_ID --json | jq -r '.artifacts[] | select(.type | contains("apk")) | .url')
+              echo "APK URL: $APK_URL"
+              echo "url=$APK_URL" >> $GITHUB_OUTPUT
               break
             elif [ "$STATUS" = "errored" ]; then
-              echo "Build failed!"
+              echo "❌ Build failed!"
               exit 1
             fi
 
@@ -72,18 +76,18 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-apk
-          path: build.apk
-          retention-days: 30
+      - name: Create APK download link
+        run: |
+          echo "## 📱 APK 下载链接" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "构建完成！APK 下载地址：" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.apk-url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Create Release with APK
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
-          files: build.apk
+          body: "## 📱 APK 下载链接\n\n${{ steps.apk-url.outputs.url }}"
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
