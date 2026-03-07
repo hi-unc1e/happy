@@ -28,9 +28,9 @@ jobs:
       - name: Setup EAS CLI
         run: npm install -g eas-cli
 
-      - name: Install dependencies
+      - name: Configure EAS project
         run: |
-          npm install --legacy-peer-deps
+          echo '{"expo":{"slug":"happy","extra":{"eas":{"projectId":"07f70315-2747-4822-8ef4-405eb83d8fc0"}}}}' > app.json
 
       - name: Build Android APK
         run: |
