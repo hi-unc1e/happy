@@ -74,17 +74,16 @@ jobs:
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             PROFILE="production"
-            APP_ENV="production"
+            export APP_ENV="production"
           else
             PROFILE="preview"
-            APP_ENV="preview"
+            export APP_ENV="preview"
           fi
           echo "Building with profile: $PROFILE, APP_ENV: $APP_ENV"
           eas build --platform android --profile $PROFILE --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_SKIP_TYPESCRIPT_VALIDATION: 1
-          APP_ENV: ${{ APP_ENV }}
 
       - name: Wait for build and get APK URL
         id: apk-url
