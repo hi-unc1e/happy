@@ -69,12 +69,18 @@ jobs:
           # Grant execute permission for gradlew
           chmod +x gradlew
 
+          # Set Gradle memory options to avoid OOM
+          export ORG_GRADLE_PROJECT_org.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError"
+          export ORG_GRADLE_PROJECT_org.gradle.daemon=true
+          export ORG_GRADLE_PROJECT_org.gradle.parallel=true
+          export ORG_GRADLE_PROJECT_org.gradle.caching=true
+
           # Build APK (debug version, no keystore needed)
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            ./gradlew assembleRelease
+            ./gradlew assembleRelease --no-daemon
             APK_PATH=./app/build/outputs/apk/release/app-release.apk
           else
-            ./gradlew assembleDebug
+            ./gradlew assembleDebug --no-daemon
             APK_PATH=./app/build/outputs/apk/debug/app-debug.apk
           fi
 
