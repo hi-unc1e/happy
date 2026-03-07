@@ -62,6 +62,8 @@ jobs:
 
           # Run prebuild to generate Android project
           npx expo prebuild --platform android --clean
+        env:
+          APP_ENV: ${{ github.ref == 'refs/tags/*' && 'production' || 'preview' }}
 
       - name: Build APK with Gradle
         working-directory: ./packages/happy-app/android
@@ -86,6 +88,8 @@ jobs:
             echo "❌ APK not found at $APK_PATH"
             exit 1
           fi
+        env:
+          APP_ENV: ${{ github.ref == 'refs/tags/*' && 'production' || 'preview' }}
 
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
