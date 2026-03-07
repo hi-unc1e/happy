@@ -28,18 +28,23 @@ jobs:
       - name: Setup EAS CLI
         run: npm install -g eas-cli
 
+      - name: Install dependencies
+        working-directory: ./packages/happy-app
+        run: |
+          npm install --legacy-peer-deps
+
       - name: Configure EAS project
         run: |
           echo '{"expo":{"slug":"happy","extra":{"eas":{"projectId":"07f70315-2747-4822-8ef4-405eb83d8fc0"}}}}' > app.json
 
       - name: Build Android APK
+        working-directory: ./packages/happy-app
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             PROFILE="production"
           else
             PROFILE="preview"
           fi
-          cd packages/happy-app
           eas build --platform android --profile $PROFILE --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
