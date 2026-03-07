@@ -150,7 +150,7 @@ export default {
             ]
         ],
         updates: {
-            url: "https://u.expo.dev/4558dd3d-cd5a-47cd-bad9-e591a241cc06",
+            url: "https://u.expo.dev/07f70315-2747-4822-8ef4-405eb83d8fc0",
             requestHeaders: {
                 "expo-channel-name": "production"
             }
@@ -163,7 +163,7 @@ export default {
                 root: "./sources/app"
             },
             eas: {
-                projectId: "4558dd3d-cd5a-47cd-bad9-e591a241cc06"
+                projectId: "07f70315-2747-4822-8ef4-405eb83d8fc0"
             },
             app: {
                 postHogKey: process.env.EXPO_PUBLIC_POSTHOG_API_KEY,
