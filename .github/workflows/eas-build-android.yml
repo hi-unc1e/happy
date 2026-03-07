@@ -33,6 +33,7 @@ jobs:
           echo '{"expo":{"slug":"happy"}}' > app.json
 
       - name: Build Android APK
+        id: build
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             PROFILE="production"
@@ -40,7 +41,34 @@ jobs:
             PROFILE="preview"
           fi
           cd packages/happy-app
-          eas build --platform android --profile $PROFILE --non-interactive --output ../../build.apk
+          eas build --platform android --profile $PROFILE --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Wait for build and download APK
+        run: |
+          # Get the latest build ID
+          BUILD_ID=$(eas build:list --platform=android --limit=1 --non-interactive --json | jq -r '.[0].id')
+          echo "Build ID: $BUILD_ID"
+
+          # Wait for build to complete
+          for i in {1..60}; do
+            STATUS=$(eas build:view $BUILD_ID --json | jq -r '.status')
+            echo "Build status: $STATUS"
+
+            if [ "$STATUS" = "finished" ]; then
+              echo "Build finished successfully!"
+              # Download the APK
+              eas build:view $BUILD_ID --json | jq -r '.artifacts[] | select(.type | contains("apk")) | .url' | xargs -n 1 curl -L -o build.apk
+              break
+            elif [ "$STATUS" = "errored" ]; then
+              echo "Build failed!"
+              exit 1
+            fi
+
+            echo "Waiting 30 seconds..."
+            sleep 30
+          done
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
