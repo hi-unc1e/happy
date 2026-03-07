@@ -33,46 +33,102 @@ jobs:
         run: |
           npm install --legacy-peer-deps
 
-      - name: Configure EAS project
+      - name: Show build environment info
+        working-directory: ./packages/happy-app
         run: |
-          echo '{"expo":{"slug":"happy","extra":{"eas":{"projectId":"07f70315-2747-4822-8ef4-405eb83d8fc0"}}}}' > app.json
+          echo "=== Node version ==="
+          node --version
+          echo "=== NPM version ==="
+          npm --version
+          echo "=== EAS CLI version ==="
+          eas --version
+          echo "=== Working directory ==="
+          pwd
+          echo "=== Git ref ==="
+          echo "${{ github.ref }}"
+          echo "=== Git SHA ==="
+          git rev-parse HEAD
+
+      - name: Verify EAS configuration
+        working-directory: ./packages/happy-app
+        run: |
+          echo "Verifying app.config.js..."
+          if [ -f "app.config.js" ]; then
+            echo "✅ app.config.js exists"
+          else
+            echo "❌ app.config.js not found"
+            exit 1
+          fi
+
+          echo "Verifying eas.json..."
+          if [ -f "eas.json" ]; then
+            echo "✅ eas.json exists"
+            cat eas.json
+          else
+            echo "❌ eas.json not found"
+            exit 1
+          fi
 
       - name: Build Android APK
         working-directory: ./packages/happy-app
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             PROFILE="production"
+            APP_ENV="production"
           else
             PROFILE="preview"
+            APP_ENV="preview"
           fi
+          echo "Building with profile: $PROFILE, APP_ENV: $APP_ENV"
           eas build --platform android --profile $PROFILE --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_SKIP_TYPESCRIPT_VALIDATION: 1
+          APP_ENV: ${{ APP_ENV }}
 
       - name: Wait for build and get APK URL
         id: apk-url
+        working-directory: ./packages/happy-app
         run: |
           # Get the latest build ID
-          sleep 5
+          echo "Waiting for build to start..."
+          sleep 10
+
           BUILD_ID=$(eas build:list --platform=android --limit=1 --non-interactive --json | jq -r '.[0].id')
           echo "Build ID: $BUILD_ID"
 
+          if [ "$BUILD_ID" = "null" ] || [ -z "$BUILD_ID" ]; then
+            echo "❌ Failed to get build ID"
+            exit 1
+          fi
+
           # Wait for build to complete
-          for i in {1..60}; do
-            STATUS=$(eas build:view $BUILD_ID --json | jq -r '.status')
-            echo "[$i] Build status: $STATUS"
+          MAX_ATTEMPTS=90
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            BUILD_INFO=$(eas build:view $BUILD_ID --json)
+            STATUS=$(echo $BUILD_INFO | jq -r '.status')
+            echo "[$i/$MAX_ATTEMPTS] Build status: $STATUS"
 
             if [ "$STATUS" = "finished" ]; then
               echo "✅ Build finished successfully!"
 
               # Get APK URL
-              APK_URL=$(eas build:view $BUILD_ID --json | jq -r '.artifacts[] | select(.type | contains("apk")) | .url')
-              echo "APK URL: $APK_URL"
-              echo "url=$APK_URL" >> $GITHUB_OUTPUT
+              APK_URL=$(echo $BUILD_INFO | jq -r '.artifacts[]? | select(.type | contains("apk")) | .url')
+
+              if [ -n "$APK_URL" ] && [ "$APK_URL" != "null" ]; then
+                echo "APK URL: $APK_URL"
+                echo "url=$APK_URL" >> $GITHUB_OUTPUT
+              else
+                echo "⚠️ No APK URL found in artifacts, checking build page..."
+                BUILD_PAGE_URL=$(echo $BUILD_INFO | jq -r '.buildPageUrl')
+                echo "Build page: $BUILD_PAGE_URL"
+                echo "url=$BUILD_PAGE_URL" >> $GITHUB_OUTPUT
+              fi
               break
             elif [ "$STATUS" = "errored" ]; then
               echo "❌ Build failed!"
+              echo "Check build page for details:"
+              echo $BUILD_INFO | jq -r '.buildPageUrl'
               exit 1
             fi
 
